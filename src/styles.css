@@ -1,0 +1,167 @@
+:root {
+  --bg-0: #11151d;
+  --bg-1: #1d2430;
+  --bg-2: #2a3342;
+  --fg: #ebf2ff;
+  --accent: #f4c95d;
+  --danger: #ef476f;
+  --ok: #52b788;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--fg);
+  font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  background:
+    radial-gradient(circle at 20% 20%, #243047 0%, transparent 40%),
+    radial-gradient(circle at 80% 10%, #3a2d30 0%, transparent 35%),
+    linear-gradient(160deg, var(--bg-0), var(--bg-1) 45%, var(--bg-2));
+}
+
+.app {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.hud-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.hud-top h1 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.hud-top p {
+  margin: 0;
+  color: #c5d2eb;
+}
+
+#game {
+  width: 100%;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  margin-top: 10px;
+  background: #111;
+  image-rendering: crisp-edges;
+}
+
+.help {
+  margin-top: 10px;
+  line-height: 1.5;
+  color: #d7e2f5;
+  font-size: 0.94rem;
+}
+
+.panel-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.panel-grid.single {
+  grid-template-columns: 1fr;
+}
+
+.panel-card {
+  background: rgba(8, 13, 21, 0.56);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.panel-card h3,
+.panel-card h4 {
+  margin: 0 0 6px;
+}
+
+.panel-card h4 {
+  font-size: 0.9rem;
+  color: #bcd0f2;
+}
+
+.meta {
+  color: #c5d4ed;
+  font-size: 0.86rem;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 8px;
+  margin: 6px 0 8px;
+  font-size: 0.87rem;
+}
+
+.equip-list {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
+.equip-list li {
+  margin-bottom: 4px;
+}
+
+.panel-inline {
+  margin-top: 8px;
+  display: grid;
+  gap: 3px;
+}
+
+.bag-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.bag-slot {
+  min-height: 44px;
+  padding: 4px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 0.75rem;
+  color: #b9c7df;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  text-align: center;
+}
+
+.bag-slot.selected {
+  box-shadow: inset 0 0 0 1px #f4c95d;
+  border-color: #f4c95d;
+  background: rgba(244, 201, 93, 0.1);
+}
+
+.bag-name {
+  line-height: 1.2;
+}
+
+.bag-meta {
+  opacity: 0.85;
+}
+
+@media (max-width: 900px) {
+  .panel-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+kbd {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  padding: 2px 6px;
+  font-size: 0.86rem;
+}

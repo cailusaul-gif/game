@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>双人冒险游戏框架</title>
+    <link rel="stylesheet" href="./src/styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header class="hud-top">
+        <h1>双人冒险 - 框架原型</h1>
+        <p id="statusLine"></p>
+      </header>
+      <canvas id="game" width="960" height="540"></canvas>
+      <section class="help" id="helpPanel"></section>
+    </main>
+    <script src="./src/config/constants.js"></script>
+    <script src="./src/core/utils.js"></script>
+    <script src="./src/core/input.js"></script>
+    <script src="./src/systems/equipment.js"></script>
+    <script src="./src/systems/map.js"></script>
+    <script src="./src/systems/collision.js"></script>
+    <script src="./src/systems/sprites.js"></script>
+    <script src="./src/entities/entity.js"></script>
+    <script src="./src/entities/projectile.js"></script>
+    <script src="./src/entities/enemy.js"></script>
+    <script src="./src/entities/boss.js"></script>
+    <script src="./src/entities/loot.js"></script>
+    <script src="./src/entities/player.js"></script>
+    <script src="./src/ui/renderer.js"></script>
+    <script src="./src/ui/hud.js"></script>
+    <script src="./src/game.js"></script>
+    <script src="./src/main.js"></script>
+  </body>
+</html>
