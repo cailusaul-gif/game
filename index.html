@@ -2,7 +2,7 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>双人冒险游戏框架</title>
     <link rel="stylesheet" href="./src/styles.css" />
   </head>
@@ -12,7 +12,11 @@
         <h1>双人冒险 - 框架原型</h1>
         <p id="statusLine"></p>
       </header>
-      <canvas id="game" width="960" height="540"></canvas>
+      <div class="game-shell">
+        <canvas id="game" width="960" height="540"></canvas>
+        <section class="mobile-controls hidden" id="mobileControls" aria-label="手机触控按键"></section>
+        <div class="rotate-hint hidden" id="rotateHint">请横屏后再开始游戏</div>
+      </div>
       <section class="rank-panel hidden" id="gameOverPanel" aria-live="polite">
         <h3>本局结算与排行榜</h3>
         <div class="meta" id="gameOverSummary"></div>
@@ -41,6 +45,7 @@
     <script src="./src/entities/player.js"></script>
     <script src="./src/ui/renderer.js"></script>
     <script src="./src/ui/hud.js"></script>
+    <script src="./src/ui/mobile-controls.js"></script>
     <script src="./src/game.js"></script>
     <script src="./src/main.js"></script>
   </body>

@@ -15,6 +15,7 @@
     }
 
     draw(game) {
+      const single = !!game.singlePlayerMode;
       if (game.state === GAME_STATES.CLASS_SELECT) {
         this.statusLine.textContent = "选择职业后按 Enter 开始";
         this.helpPanel.innerHTML = `
@@ -22,9 +23,14 @@
             <section class="panel-card">
               <h3>职业选择</h3>
               <div>P1: <kbd>Q</kbd>武士 <kbd>W</kbd>弓箭手 <kbd>E</kbd>魔法师</div>
-              <div>P2: <kbd>U</kbd>武士 <kbd>I</kbd>弓箭手 <kbd>O</kbd>魔法师</div>
+              ${
+                single
+                  ? `<div class="meta">当前: P1 = ${CLASS_DEFS[game.selected.p1].name}</div>
+              <div class="meta">单人模式：使用 P1 操作，拥有攻击、翻滚、职业技能、治疗（每局最多2次）。</div>`
+                  : `<div>P2: <kbd>U</kbd>武士 <kbd>I</kbd>弓箭手 <kbd>O</kbd>魔法师</div>
               <div class="meta">当前: P1 = ${CLASS_DEFS[game.selected.p1].name}，P2 = ${CLASS_DEFS[game.selected.p2].name}</div>
-              <div class="meta">进入战斗后：每位玩家都有攻击、翻滚、职业技能、治疗（每局最多2次）。</div>
+              <div class="meta">进入战斗后：每位玩家都有攻击、翻滚、职业技能、治疗（每局最多2次）。</div>`
+              }
             </section>
           </div>
         `;
@@ -44,8 +50,9 @@
 
       const playerPanels = game.players.map((p) => this.renderPlayerPanel(p)).join("");
 
-      let controlHint =
-        "P1: WASD/F/G/R/T/E/C/V/B/X；P2: IJKL/H/Y/P/[/O/N/M/,/.（E/O 交互）。";
+      let controlHint = single
+        ? "P1: WASD/F/G/R/T/E/C/V/B/X（E 交互）。"
+        : "P1: WASD/F/G/R/T/E/C/V/B/X；P2: IJKL/H/Y/P/[/O/N/M/,/.（E/O 交互）。";
       if (game.state === GAME_STATES.VICTORY) {
         controlHint = "已击败 Boss，按 Enter 返回职业选择。";
       } else if (game.state === GAME_STATES.GAME_OVER) {
@@ -53,7 +60,9 @@
           ? "挑战失败，按 Enter 返回职业选择。"
           : "挑战失败：请先在下方提交名字和成绩，再按 Enter 返回职业选择。";
       } else if (isCamp) {
-        controlHint = "休息营地（每3关）：靠近商人后 P1按 C/V、P2按 N/M 选择商品，E/O 购买；进入上方传送门前往下一关。";
+        controlHint = single
+          ? "休息营地（每3关）：靠近商人后按 C/V 选择商品，E 购买；进入上方传送门前往下一关。"
+          : "休息营地（每3关）：靠近商人后 P1按 C/V、P2按 N/M 选择商品，E/O 购买；进入上方传送门前往下一关。";
       }
 
       const campPanel = isCamp ? this.renderCampShop(game) : "";
@@ -106,10 +115,14 @@
             <div class="bag-meta">${merchant.restockCost} 金币 · 刷新4件商品</div>
           </div>`;
 
+      const selectionHint = game.singlePlayerMode
+        ? "P1 选中高亮为金色；靠近商人后可购买。"
+        : "P1 选中高亮为金色，P2 选中高亮为蓝色；靠近商人后可各自选择购买。";
+
       return `
         <section class="panel-card">
           <h4>营地商人</h4>
-          <div class="meta">P1 选中高亮为金色，P2 选中高亮为蓝色；靠近商人后可各自选择购买。</div>
+          <div class="meta">${selectionHint}</div>
           <div class="bag-grid">${healCard}${offerHtml}${restockCard}</div>
         </section>
       `;

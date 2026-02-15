@@ -21,6 +21,7 @@ body {
     radial-gradient(circle at 20% 20%, #243047 0%, transparent 40%),
     radial-gradient(circle at 80% 10%, #3a2d30 0%, transparent 35%),
     linear-gradient(160deg, var(--bg-0), var(--bg-1) 45%, var(--bg-2));
+  overflow-x: hidden;
 }
 
 .app {
@@ -46,13 +47,178 @@ body {
   color: #c5d2eb;
 }
 
+.game-shell {
+  position: relative;
+  margin-top: 10px;
+  margin-inline: auto;
+}
+
 #game {
   width: 100%;
+  height: auto;
+  display: block;
   border: 2px solid rgba(255, 255, 255, 0.2);
   border-radius: 12px;
-  margin-top: 10px;
   background: #111;
   image-rendering: crisp-edges;
+}
+
+.mobile-controls {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  padding: 8px;
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+
+.mobile-controls.hidden {
+  display: none;
+}
+
+.mobile-controls.locked {
+  opacity: 0.35;
+}
+
+.mc-top-row {
+  pointer-events: none;
+  display: none;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.mc-bottom-row {
+  pointer-events: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 10px;
+}
+
+.mc-bottom-row.single {
+  justify-content: flex-start;
+}
+
+.mobile-controls.menu-state .mc-top-row {
+  display: flex;
+}
+
+.mobile-controls.menu-state .mc-bottom-row {
+  display: none;
+}
+
+.mc-zone {
+  display: flex;
+  align-items: end;
+  gap: 8px;
+}
+
+.mc-label {
+  align-self: start;
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  color: #f7f9ff;
+  background: rgba(4, 9, 16, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.mc-zone.p1 .mc-label {
+  color: #ffd79f;
+}
+
+.mc-dpad {
+  pointer-events: none;
+  width: 112px;
+  height: 112px;
+  position: relative;
+}
+
+.mc-actions {
+  pointer-events: none;
+  width: 132px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.mc-btn {
+  pointer-events: auto;
+  touch-action: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  background: rgba(7, 14, 24, 0.62);
+  color: #eff6ff;
+  font-size: 0.72rem;
+  line-height: 1;
+  padding: 7px 6px;
+  min-width: 32px;
+  min-height: 30px;
+}
+
+.mc-btn.main {
+  border-color: rgba(146, 255, 182, 0.8);
+  background: rgba(57, 143, 89, 0.55);
+}
+
+.mc-btn.primary {
+  border-color: rgba(255, 232, 156, 0.9);
+  background: rgba(181, 125, 34, 0.52);
+}
+
+.mc-btn.active {
+  transform: translateY(1px);
+  border-color: #ffffff;
+  background: rgba(75, 132, 207, 0.7);
+}
+
+.mc-dpad .mc-btn {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  position: absolute;
+}
+
+.mc-dpad .mc-btn.up {
+  left: 36px;
+  top: 0;
+}
+
+.mc-dpad .mc-btn.down {
+  left: 36px;
+  bottom: 0;
+}
+
+.mc-dpad .mc-btn.left {
+  left: 0;
+  top: 36px;
+}
+
+.mc-dpad .mc-btn.right {
+  right: 0;
+  top: 36px;
+}
+
+.rotate-hint {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #f5e7bb;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 12px;
+  backdrop-filter: blur(1px);
+}
+
+.rotate-hint.hidden {
+  display: none;
 }
 
 .help {
@@ -228,6 +394,75 @@ body {
 
   .rank-entry {
     grid-template-columns: 1fr;
+  }
+}
+
+body.mobile-mode {
+  overflow: hidden;
+}
+
+body.mobile-mode .app {
+  max-width: none;
+  height: 100dvh;
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  gap: 8px;
+  padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right))
+    max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+}
+
+body.mobile-mode .hud-top h1 {
+  font-size: 0.98rem;
+}
+
+body.mobile-mode .hud-top p {
+  font-size: 0.82rem;
+}
+
+body.mobile-mode .help {
+  display: none;
+}
+
+body.mobile-mode .rank-panel {
+  max-height: 36dvh;
+  overflow: auto;
+}
+
+@media (orientation: landscape) and (max-height: 540px) {
+  .mc-dpad {
+    width: 96px;
+    height: 96px;
+  }
+
+  .mc-dpad .mc-btn {
+    width: 34px;
+    height: 34px;
+  }
+
+  .mc-dpad .mc-btn.up {
+    left: 31px;
+  }
+
+  .mc-dpad .mc-btn.down {
+    left: 31px;
+  }
+
+  .mc-dpad .mc-btn.left {
+    top: 31px;
+  }
+
+  .mc-dpad .mc-btn.right {
+    top: 31px;
+  }
+
+  .mc-actions {
+    width: 114px;
+  }
+
+  .mc-btn {
+    min-height: 26px;
+    font-size: 0.66rem;
+    padding: 5px 4px;
   }
 }
 

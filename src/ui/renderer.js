@@ -780,7 +780,12 @@
       ctx.fillStyle = "#edf2ff";
       ctx.textAlign = "center";
       ctx.font = "bold 42px sans-serif";
-      ctx.fillText("双人冒险框架", this.canvas.width / 2, 130);
+      ctx.fillText(game.singlePlayerMode ? "冒险框架（单人）" : "双人冒险框架", this.canvas.width / 2, 130);
+
+      if (game.singlePlayerMode) {
+        this.drawClassCard(this.canvas.width / 2, 250, "P1", game.selected.p1);
+        return;
+      }
 
       this.drawClassCard(240, 220, "P1", game.selected.p1);
       this.drawClassCard(720, 220, "P2", game.selected.p2);

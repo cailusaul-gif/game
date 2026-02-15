@@ -126,13 +126,15 @@
   }
 
   class Game {
-    constructor(canvas, statusLine, helpPanel, gameOverPanel) {
+    constructor(canvas, statusLine, helpPanel, gameOverPanel, options) {
+      const opts = options || {};
       this.canvas = canvas;
       this.ctx = canvas.getContext("2d");
       this.input = new CG.Input();
       this.renderer = new CG.Renderer(canvas, this.ctx);
       this.hud = new CG.HUD(statusLine, helpPanel);
       CG.SpriteSystem.prime();
+      this.singlePlayerMode = !!opts.singlePlayer;
 
       this.state = GAME_STATES.CLASS_SELECT;
       this.selected = { p1: "samurai", p2: "archer" };
@@ -272,7 +274,7 @@
     triggerGameOver(message) {
       if (this.state === GAME_STATES.GAME_OVER) return;
       this.state = GAME_STATES.GAME_OVER;
-      this.log = message || "两位玩家都倒下了";
+      this.log = message || (this.singlePlayerMode ? "冒险者倒下了" : "两位玩家都倒下了");
 
       const totalKills = this.players.reduce((sum, p) => sum + (p && p.kills ? p.kills : 0), 0);
       this.pendingScore = {
@@ -334,10 +336,10 @@
       });
 
       const firstMap = this.level.rooms[0].map;
-      this.players = [
-        new CG.Player("P1", this.selected.p1, CONTROL_SETS.p1, firstMap.spawnPoints[0].x, firstMap.spawnPoints[0].y),
-        new CG.Player("P2", this.selected.p2, CONTROL_SETS.p2, firstMap.spawnPoints[1].x, firstMap.spawnPoints[1].y),
-      ];
+      this.players = [new CG.Player("P1", this.selected.p1, CONTROL_SETS.p1, firstMap.spawnPoints[0].x, firstMap.spawnPoints[0].y)];
+      if (!this.singlePlayerMode) {
+        this.players.push(new CG.Player("P2", this.selected.p2, CONTROL_SETS.p2, firstMap.spawnPoints[1].x, firstMap.spawnPoints[1].y));
+      }
       this.merchantSelection = Object.create(null);
       for (const p of this.players) {
         this.merchantSelection[p.id] = 0;
@@ -574,7 +576,7 @@
       }
 
       if (this.players.every((p) => !p.alive)) {
-        this.triggerGameOver("两位玩家都倒下了");
+        this.triggerGameOver(this.singlePlayerMode ? "冒险者倒下了" : "两位玩家都倒下了");
       }
     }
 
@@ -602,8 +604,10 @@
       for (const [key, v] of Object.entries(CLASS_PICK_KEYS.p1)) {
         if (this.input.consume(key)) this.selected.p1 = v;
       }
-      for (const [key, v] of Object.entries(CLASS_PICK_KEYS.p2)) {
-        if (this.input.consume(key)) this.selected.p2 = v;
+      if (!this.singlePlayerMode) {
+        for (const [key, v] of Object.entries(CLASS_PICK_KEYS.p2)) {
+          if (this.input.consume(key)) this.selected.p2 = v;
+        }
       }
       if (this.input.consume("Enter")) {
         this.startNewRun();
@@ -655,7 +659,7 @@
       }
 
       if (this.players.every((p) => !p.alive)) {
-        this.triggerGameOver("两位玩家都倒下了");
+        this.triggerGameOver(this.singlePlayerMode ? "冒险者倒下了" : "两位玩家都倒下了");
       }
     }
 
