@@ -2,6 +2,8 @@
   const CG = (window.CoopGame = window.CoopGame || {});
   const { GAME_STATES, CONTROL_SETS, CLASS_PICK_KEYS, ENEMY_DEFS } = CG.CONSTANTS;
   const { randInt, clamp } = CG.Utils;
+  const LEADERBOARD_KEY = "coop_adventure_rank_v1";
+  const LEADERBOARD_MAX = 20;
 
   function makeMerchantOffers(levelIndex, count) {
     const offers = [];
@@ -124,7 +126,7 @@
   }
 
   class Game {
-    constructor(canvas, statusLine, helpPanel) {
+    constructor(canvas, statusLine, helpPanel, gameOverPanel) {
       this.canvas = canvas;
       this.ctx = canvas.getContext("2d");
       this.input = new CG.Input();
@@ -150,9 +152,176 @@
       this.effects = [];
       this.log = "";
       this.lastRewardText = "";
+      this.gameOverPanel = gameOverPanel || null;
+      this.rankNameInput = this.gameOverPanel ? this.gameOverPanel.querySelector("#rankNameInput") : null;
+      this.rankSubmitBtn = this.gameOverPanel ? this.gameOverPanel.querySelector("#rankSubmitBtn") : null;
+      this.rankList = this.gameOverPanel ? this.gameOverPanel.querySelector("#rankList") : null;
+      this.gameOverSummary = this.gameOverPanel ? this.gameOverPanel.querySelector("#gameOverSummary") : null;
+      this.rankSubmitHint = this.gameOverPanel ? this.gameOverPanel.querySelector("#rankSubmitHint") : null;
+      this.pendingScore = null;
+      this.scoreSubmitted = false;
+      this.leaderboard = this.loadLeaderboard();
+      this.merchantSelection = Object.create(null);
+
+      this.bindGameOverPanel();
+      this.renderLeaderboard();
+      this.hideGameOverPanel();
 
       this.lastTime = performance.now();
       requestAnimationFrame(this.loop.bind(this));
+    }
+
+    bindGameOverPanel() {
+      if (!this.gameOverPanel) return;
+
+      if (this.rankSubmitBtn) {
+        this.rankSubmitBtn.addEventListener("click", () => this.submitPendingScore());
+      }
+
+      if (this.rankNameInput) {
+        this.rankNameInput.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            this.submitPendingScore();
+          }
+        });
+      }
+    }
+
+    hideGameOverPanel() {
+      if (!this.gameOverPanel) return;
+      this.gameOverPanel.classList.add("hidden");
+    }
+
+    showGameOverPanel() {
+      if (!this.gameOverPanel) return;
+      this.gameOverPanel.classList.remove("hidden");
+      if (this.rankNameInput) {
+        setTimeout(() => this.rankNameInput.focus(), 0);
+      }
+    }
+
+    canReturnToClassSelect() {
+      if (this.state === GAME_STATES.GAME_OVER) {
+        return !!this.scoreSubmitted || !this.gameOverPanel;
+      }
+      return true;
+    }
+
+    sanitizeName(name) {
+      const text = String(name || "").trim().slice(0, 16);
+      return text || "无名冒险者";
+    }
+
+    escapeHtml(text) {
+      return String(text || "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    }
+
+    sortLeaderboard(list) {
+      return list.sort((a, b) => b.level - a.level || b.kills - a.kills || a.at - b.at);
+    }
+
+    loadLeaderboard() {
+      try {
+        const raw = window.localStorage.getItem(LEADERBOARD_KEY);
+        if (!raw) return [];
+        const data = JSON.parse(raw);
+        if (!Array.isArray(data)) return [];
+        const list = data
+          .filter((row) => row && typeof row.level === "number" && typeof row.kills === "number" && typeof row.at === "number")
+          .map((row) => ({
+            name: this.sanitizeName(row.name),
+            level: Math.max(1, Math.floor(row.level)),
+            kills: Math.max(0, Math.floor(row.kills)),
+            at: row.at,
+          }));
+        return this.sortLeaderboard(list).slice(0, LEADERBOARD_MAX);
+      } catch (_err) {
+        return [];
+      }
+    }
+
+    saveLeaderboard() {
+      try {
+        window.localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(this.leaderboard.slice(0, LEADERBOARD_MAX)));
+      } catch (_err) {
+        // ignore storage failures
+      }
+    }
+
+    renderLeaderboard() {
+      if (!this.rankList) return;
+      if (!Array.isArray(this.leaderboard) || this.leaderboard.length <= 0) {
+        this.rankList.innerHTML = "<li>暂无记录</li>";
+        return;
+      }
+
+      this.rankList.innerHTML = this.leaderboard
+        .slice(0, LEADERBOARD_MAX)
+        .map((row, idx) => {
+          const name = this.escapeHtml(row.name);
+          return `<li>#${idx + 1} ${name} - 第 ${row.level} 关 · 击杀 ${row.kills}</li>`;
+        })
+        .join("");
+    }
+
+    triggerGameOver(message) {
+      if (this.state === GAME_STATES.GAME_OVER) return;
+      this.state = GAME_STATES.GAME_OVER;
+      this.log = message || "两位玩家都倒下了";
+
+      const totalKills = this.players.reduce((sum, p) => sum + (p && p.kills ? p.kills : 0), 0);
+      this.pendingScore = {
+        level: Math.max(1, this.levelIndex),
+        kills: Math.max(0, Math.floor(totalKills)),
+        at: Date.now(),
+      };
+      this.scoreSubmitted = !this.gameOverPanel;
+
+      if (!this.gameOverPanel) return;
+
+      if (this.rankNameInput) {
+        this.rankNameInput.value = "";
+        this.rankNameInput.disabled = false;
+      }
+      if (this.rankSubmitBtn) this.rankSubmitBtn.disabled = false;
+      if (this.gameOverSummary) {
+        this.gameOverSummary.textContent = `本次成绩：到达第 ${this.pendingScore.level} 关，总击杀 ${this.pendingScore.kills}。`;
+      }
+      if (this.rankSubmitHint) {
+        this.rankSubmitHint.textContent = "请输入名字并提交成绩，提交后才能返回职业选择。";
+      }
+
+      this.renderLeaderboard();
+      this.showGameOverPanel();
+    }
+
+    submitPendingScore() {
+      if (this.state !== GAME_STATES.GAME_OVER) return false;
+      if (this.scoreSubmitted || !this.pendingScore) return false;
+
+      const name = this.sanitizeName(this.rankNameInput ? this.rankNameInput.value : "");
+      this.leaderboard.push({
+        name,
+        level: this.pendingScore.level,
+        kills: this.pendingScore.kills,
+        at: this.pendingScore.at,
+      });
+      this.leaderboard = this.sortLeaderboard(this.leaderboard).slice(0, LEADERBOARD_MAX);
+      this.saveLeaderboard();
+      this.renderLeaderboard();
+
+      this.scoreSubmitted = true;
+      this.pendingScore = null;
+      if (this.rankNameInput) this.rankNameInput.disabled = true;
+      if (this.rankSubmitBtn) this.rankSubmitBtn.disabled = true;
+      this.input.pressed.delete("Enter");
+      if (this.rankSubmitHint) this.rankSubmitHint.textContent = `${name} 的成绩已提交，按 Enter 返回职业选择。`;
+      return true;
     }
 
     startNewRun() {
@@ -169,11 +338,18 @@
         new CG.Player("P1", this.selected.p1, CONTROL_SETS.p1, firstMap.spawnPoints[0].x, firstMap.spawnPoints[0].y),
         new CG.Player("P2", this.selected.p2, CONTROL_SETS.p2, firstMap.spawnPoints[1].x, firstMap.spawnPoints[1].y),
       ];
+      this.merchantSelection = Object.create(null);
+      for (const p of this.players) {
+        this.merchantSelection[p.id] = 0;
+      }
 
       this.enterRoom(0);
       this.state = GAME_STATES.PLAYING;
       this.log = "进入第 1 个关卡";
       this.lastRewardText = "";
+      this.pendingScore = null;
+      this.scoreSubmitted = false;
+      this.hideGameOverPanel();
     }
 
     enterCombatLevel(levelIndex) {
@@ -200,6 +376,9 @@
       this.enterRoom(0);
       this.state = GAME_STATES.PLAYING;
       this.log = `抵达休息营地（第${nextLevelIndex}关前）`;
+      for (const p of this.players) {
+        this.merchantSelection[p.id] = 0;
+      }
     }
 
     advanceAfterLevelComplete() {
@@ -260,14 +439,74 @@
       }
     }
 
+    isPlayerNearMerchant(player) {
+      const room = this.currentRoom;
+      if (!room || !room.isCamp || !room.merchant || !player || !player.alive) return false;
+      const m = room.merchant;
+      const dist = Math.hypot(player.x - m.x, player.y - m.y);
+      return dist <= player.radius + m.radius + 26;
+    }
+
+    merchantCardCount(merchant) {
+      const offerCount = Array.isArray(merchant?.offers) ? merchant.offers.length : 0;
+      return 2 + offerCount;
+    }
+
+    getMerchantSelection(player, merchant) {
+      if (!player || !merchant) return 0;
+      const key = player.id;
+      const total = Math.max(1, this.merchantCardCount(merchant));
+      const cur = Number.isInteger(this.merchantSelection[key]) ? this.merchantSelection[key] : 0;
+      const normalized = ((cur % total) + total) % total;
+      this.merchantSelection[key] = normalized;
+      return normalized;
+    }
+
+    getMerchantSelectionIndex(player) {
+      const room = this.currentRoom;
+      if (!room || !room.isCamp || !room.merchant || !player) return -1;
+      return this.getMerchantSelection(player, room.merchant);
+    }
+
+    merchantOptionLabel(index, merchant) {
+      if (index === 0) return "治疗上限+1";
+      const offers = merchant?.offers || [];
+      if (index === offers.length + 1) return "商店补货";
+      const offer = offers[index - 1];
+      return offer?.item?.name || "未知商品";
+    }
+
+    cycleMerchantSelection(player, step) {
+      const room = this.currentRoom;
+      if (!room || !room.isCamp || !room.merchant || !player || !player.alive) return false;
+      if (!this.isPlayerNearMerchant(player)) return false;
+      const m = room.merchant;
+      const total = Math.max(1, this.merchantCardCount(m));
+      const cur = this.getMerchantSelection(player, m);
+      const next = ((cur + step) % total + total) % total;
+      this.merchantSelection[player.id] = next;
+      this.log = `${player.id} 选择商店：${this.merchantOptionLabel(next, m)}`;
+      return true;
+    }
+
     tryBuyFromMerchant(player) {
       const room = this.currentRoom;
       if (!room || !room.isCamp || !room.merchant || !player.alive) return false;
       const m = room.merchant;
-      const dist = Math.hypot(player.x - m.x, player.y - m.y);
-      if (dist > player.radius + m.radius + 26) return false;
+      if (!this.isPlayerNearMerchant(player)) return false;
 
-      if (!m.healUpgradeSold && player.gold >= m.healUpgradeCost) {
+      const index = this.getMerchantSelection(player, m);
+      const offers = m.offers || [];
+
+      if (index === 0) {
+        if (m.healUpgradeSold) {
+          this.log = `${player.id} 治疗上限道具已售出`;
+          return true;
+        }
+        if (player.gold < m.healUpgradeCost) {
+          this.log = `${player.id} 金币不足，营地补给需要 ${m.healUpgradeCost} 金币`;
+          return true;
+        }
         player.gold -= m.healUpgradeCost;
         m.healUpgradeSold = true;
         player.maxHealsPerRun += 1;
@@ -276,14 +515,9 @@
         return true;
       }
 
-      const available = m.offers.filter((o) => !o.sold);
-      if (available.length <= 0) {
+      if (index === offers.length + 1) {
         if (player.gold < m.restockCost) {
-          if (!m.healUpgradeSold) {
-            this.log = `${player.id} 金币不足，营地补给需要 ${m.healUpgradeCost} 金币`;
-          } else {
-            this.log = `${player.id} 商人已售罄，补货需要 ${m.restockCost} 金币`;
-          }
+          this.log = `${player.id} 金币不足，商店补货需要 ${m.restockCost} 金币`;
           return true;
         }
         player.gold -= m.restockCost;
@@ -292,13 +526,19 @@
         return true;
       }
 
-      const pick = available.sort((a, b) => a.price - b.price).find((o) => player.gold >= o.price) || null;
+      const pick = offers[index - 1];
       if (!pick) {
-        const cheapest = available.reduce((best, o) => (o.price < best.price ? o : best), available[0]);
-        this.log = `${player.id} 金币不足，最便宜商品需要 ${cheapest.price} 金币`;
+        this.log = `${player.id} 当前选择无可购买商品`;
         return true;
       }
-
+      if (pick.sold) {
+        this.log = `${player.id} ${pick.item.name} 已售出`;
+        return true;
+      }
+      if (player.gold < pick.price) {
+        this.log = `${player.id} 金币不足，${pick.item.name} 需要 ${pick.price} 金币`;
+        return true;
+      }
       if (!player.addToInventory(pick.item)) {
         this.log = `${player.id} 背包已满，无法购买 ${pick.item.name}`;
         return true;
@@ -334,8 +574,7 @@
       }
 
       if (this.players.every((p) => !p.alive)) {
-        this.state = GAME_STATES.GAME_OVER;
-        this.log = "两位玩家都倒下了";
+        this.triggerGameOver("两位玩家都倒下了");
       }
     }
 
@@ -416,8 +655,7 @@
       }
 
       if (this.players.every((p) => !p.alive)) {
-        this.state = GAME_STATES.GAME_OVER;
-        this.log = "两位玩家都倒下了";
+        this.triggerGameOver("两位玩家都倒下了");
       }
     }
 
@@ -490,7 +728,10 @@
       } else if (this.state === GAME_STATES.PLAYING) {
         this.updatePlaying(dt);
       } else if (this.input.consume("Enter")) {
-        this.state = GAME_STATES.CLASS_SELECT;
+        if (this.canReturnToClassSelect()) {
+          this.state = GAME_STATES.CLASS_SELECT;
+          this.hideGameOverPanel();
+        }
       }
 
       this.renderer.draw(this);

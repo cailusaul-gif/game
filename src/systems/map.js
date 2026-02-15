@@ -9,24 +9,24 @@
   const STYLE_KEYS = ["forest", "swamp", "ruins"];
   const STYLE_PALETTE = {
     forest: {
-      floor: ["#2d4f34", "#355b3d", "#3f6445"],
-      wall: ["#46533a", "#4e5e43", "#3a4731"],
-      accents: ["#74b96f", "#8ad67f", "#9fcf7b"],
+      floor: ["#3f5f3f", "#4a6d49", "#567857"],
+      wall: ["#4f5d43", "#58684d", "#47563f"],
+      accents: ["#7fba78", "#93cf87", "#a7c98a"],
     },
     swamp: {
-      floor: ["#2f4746", "#345251", "#2a3f3f"],
-      wall: ["#4f5f56", "#45544d", "#37423d"],
-      accents: ["#7ed99f", "#5bbf93", "#9ee4b4"],
+      floor: ["#3b5551", "#45645f", "#35504c"],
+      wall: ["#53645a", "#4a5a52", "#3c4943"],
+      accents: ["#86caa6", "#66b996", "#9cdab6"],
     },
     ruins: {
-      floor: ["#494847", "#545251", "#5d5a57"],
-      wall: ["#66615f", "#5a5654", "#4e4a48"],
-      accents: ["#b6c6a9", "#cad8bd", "#9ba98e"],
+      floor: ["#56534f", "#625f59", "#6c6861"],
+      wall: ["#716a63", "#665f58", "#57514a"],
+      accents: ["#b7c2a6", "#c8d1b9", "#9ea98f"],
     },
     citadel: {
-      floor: ["#463d4d", "#4d4456", "#3c3544"],
-      wall: ["#60566d", "#564d61", "#4c4456"],
-      accents: ["#d8a5ff", "#f2b8ff", "#9ad6ff"],
+      floor: ["#4e4554", "#5a5062", "#433c49"],
+      wall: ["#665b72", "#5d5368", "#4e4657"],
+      accents: ["#d6a8f2", "#e6bfe9", "#9cc8e6"],
     },
   };
 
@@ -67,19 +67,19 @@
     },
     ruins: {
       small: [
-        "assets/objects/forest/white_red_mushroom2.png",
-        "assets/objects/forest/chanterelles3.png",
-        "assets/objects/forest/beige_green_mushroom3.png",
+        "assets/objects/forest/tree_idol_human.png",
+        "assets/objects/forest/tree_idol_wolf.png",
+        "assets/objects/forest/tree_idol_deer.png",
       ],
       medium: [
         "assets/objects/forest/white_tree1.png",
-        "assets/objects/forest/curved_tree2.png",
-        "assets/objects/forest/swirling_tree2.png",
+        "assets/objects/forest/white_tree2.png",
+        "assets/objects/forest/tree_idol_human.png",
       ],
       large: [
-        "assets/objects/forest/tree_idol_human.png",
+        "assets/objects/forest/tree_idol_dragon.png",
         "assets/objects/forest/tree_idol_wolf.png",
-        "assets/objects/forest/living_gazebo2.png",
+        "assets/objects/forest/tree_idol_human.png",
       ],
     },
     citadel: {

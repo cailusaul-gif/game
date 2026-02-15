@@ -49,9 +49,11 @@
       if (game.state === GAME_STATES.VICTORY) {
         controlHint = "已击败 Boss，按 Enter 返回职业选择。";
       } else if (game.state === GAME_STATES.GAME_OVER) {
-        controlHint = "挑战失败，按 Enter 返回职业选择。";
+        controlHint = game.scoreSubmitted
+          ? "挑战失败，按 Enter 返回职业选择。"
+          : "挑战失败：请先在下方提交名字和成绩，再按 Enter 返回职业选择。";
       } else if (isCamp) {
-        controlHint = "休息营地（每3关）：靠近商人按 E/O 购买（优先买治疗上限+1）；进入上方传送门前往下一关。";
+        controlHint = "休息营地（每3关）：靠近商人后 P1按 C/V、P2按 N/M 选择商品，E/O 购买；进入上方传送门前往下一关。";
       }
 
       const campPanel = isCamp ? this.renderCampShop(game) : "";
@@ -75,9 +77,17 @@
       const merchant = game.currentRoom?.merchant;
       if (!merchant) return "";
       const offers = merchant.offers || [];
+      const p1Sel = game.players?.[0] ? game.getMerchantSelectionIndex(game.players[0]) : -1;
+      const p2Sel = game.players?.[1] ? game.getMerchantSelectionIndex(game.players[1]) : -1;
+      const cardClass = (idx) => {
+        const classNames = ["bag-slot"];
+        if (idx === p1Sel) classNames.push("selected-p1");
+        if (idx === p2Sel) classNames.push("selected-p2");
+        return classNames.join(" ");
+      };
       const healRarityColor = merchant.healUpgradeSold ? "#8c8c8c" : "#ffd37a";
       const healTag = merchant.healUpgradeSold ? "已售出" : `${merchant.healUpgradeCost} 金币`;
-      const healCard = `<div class="bag-slot" style="border-color:${healRarityColor};opacity:${merchant.healUpgradeSold ? 0.55 : 1}">
+      const healCard = `<div class="${cardClass(0)}" style="border-color:${healRarityColor};opacity:${merchant.healUpgradeSold ? 0.55 : 1}">
             <div class="bag-name" style="color:${healRarityColor}">营地补给 · 治疗上限+1</div>
             <div class="bag-meta">每次营地限购1次 · ${healTag}</div>
           </div>`;
@@ -85,19 +95,22 @@
         .map((o, idx) => {
           const rarity = o.item?.rarity || { name: "普通", color: "#cfd8dc" };
           const tag = o.sold ? "已售出" : `${o.price} 金币`;
-          return `<div class="bag-slot" style="border-color:${rarity.color};opacity:${o.sold ? 0.5 : 1}">
+          return `<div class="${cardClass(idx + 1)}" style="border-color:${rarity.color};opacity:${o.sold ? 0.5 : 1}">
             <div class="bag-name" style="color:${rarity.color}">${idx + 1}. ${o.item.name}</div>
             <div class="bag-meta">${SLOT_LABELS[o.item.slot]} · ${tag}</div>
           </div>`;
         })
         .join("");
+      const restockCard = `<div class="${cardClass(offers.length + 1)}" style="border-color:#9fd7ff">
+            <div class="bag-name" style="color:#9fd7ff">商店补货</div>
+            <div class="bag-meta">${merchant.restockCost} 金币 · 刷新4件商品</div>
+          </div>`;
 
       return `
         <section class="panel-card">
           <h4>营地商人</h4>
-          <div class="meta">营地补给已加入商品列表：治疗上限+1（每次营地仅1次）</div>
-          <div class="meta">全部售罄后可花费 ${merchant.restockCost} 金币补货</div>
-          <div class="bag-grid">${healCard}${offerHtml}</div>
+          <div class="meta">P1 选中高亮为金色，P2 选中高亮为蓝色；靠近商人后可各自选择购买。</div>
+          <div class="bag-grid">${healCard}${offerHtml}${restockCard}</div>
         </section>
       `;
     }

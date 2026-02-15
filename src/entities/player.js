@@ -942,11 +942,21 @@
           }
         }
 
+        const nearMerchant =
+          !!game &&
+          game.currentRoom &&
+          game.currentRoom.isCamp &&
+          typeof game.isPlayerNearMerchant === "function" &&
+          typeof game.cycleMerchantSelection === "function" &&
+          game.isPlayerNearMerchant(this);
+
         if (input.consume(this.controls.bagPrev)) {
-          this.selectInventory(-1);
+          if (nearMerchant) game.cycleMerchantSelection(this, -1);
+          else this.selectInventory(-1);
         }
         if (input.consume(this.controls.bagNext)) {
-          this.selectInventory(1);
+          if (nearMerchant) game.cycleMerchantSelection(this, 1);
+          else this.selectInventory(1);
         }
         if (input.consume(this.controls.bagEquip)) {
           const result = this.equipFromInventory(this.inventoryCursor);

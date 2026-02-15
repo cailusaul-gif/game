@@ -13,6 +13,17 @@
         <p id="statusLine"></p>
       </header>
       <canvas id="game" width="960" height="540"></canvas>
+      <section class="rank-panel hidden" id="gameOverPanel" aria-live="polite">
+        <h3>本局结算与排行榜</h3>
+        <div class="meta" id="gameOverSummary"></div>
+        <div class="rank-entry">
+          <label for="rankNameInput">玩家名称</label>
+          <input id="rankNameInput" type="text" maxlength="16" placeholder="输入你的名字" />
+          <button id="rankSubmitBtn" type="button">提交成绩</button>
+        </div>
+        <div class="meta" id="rankSubmitHint"></div>
+        <ol class="rank-list" id="rankList"></ol>
+      </section>
       <section class="help" id="helpPanel"></section>
     </main>
     <script src="./src/config/constants.js"></script>

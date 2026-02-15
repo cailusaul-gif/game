@@ -6,6 +6,40 @@
     constructor(canvas, ctx) {
       this.canvas = canvas;
       this.ctx = ctx;
+      this.propToneByStyle = {
+        forest: {
+          tint: "rgba(104,138,90,0.2)",
+          shade: "rgba(28,44,27,0.14)",
+          ground: "rgba(79,116,76,0.2)",
+          edge: "rgba(176,214,162,0.22)",
+        },
+        swamp: {
+          tint: "rgba(90,128,114,0.22)",
+          shade: "rgba(22,38,34,0.16)",
+          ground: "rgba(73,111,98,0.22)",
+          edge: "rgba(157,204,183,0.2)",
+        },
+        ruins: {
+          tint: "rgba(134,126,106,0.18)",
+          shade: "rgba(38,33,27,0.16)",
+          ground: "rgba(114,106,90,0.2)",
+          edge: "rgba(210,198,170,0.18)",
+        },
+        citadel: {
+          tint: "rgba(119,99,138,0.2)",
+          shade: "rgba(31,24,40,0.18)",
+          ground: "rgba(92,78,116,0.2)",
+          edge: "rgba(191,171,220,0.2)",
+        },
+      };
+    }
+
+    tileNoise(x, y, salt) {
+      let n = (((x + 11) * 374761393) ^ ((y + 17) * 668265263) ^ ((salt + 3) * 362437)) >>> 0;
+      n ^= n >>> 13;
+      n = Math.imul(n, 1274126177) >>> 0;
+      n ^= n >>> 16;
+      return n / 4294967295;
     }
 
     draw(game) {
@@ -32,6 +66,7 @@
       const { ctx } = this;
       const map = game.currentMap;
       const palette = map.palette || CG.MapSystem.STYLE_PALETTE.forest;
+      const ts = map.tileSize;
 
       const bg = ctx.createLinearGradient(0, 0, 0, map.heightPx);
       bg.addColorStop(0, palette.floor[0]);
@@ -41,28 +76,72 @@
 
       for (let y = 0; y < map.rows; y += 1) {
         for (let x = 0; x < map.cols; x += 1) {
-          const tx = x * map.tileSize;
-          const ty = y * map.tileSize;
+          const tx = x * ts;
+          const ty = y * ts;
           const isWall = map.tiles[y][x] === CG.MapSystem.WALL;
           const obstacleTile = !!(map.obstacleMask && map.obstacleMask[y] && map.obstacleMask[y][x]);
-          const variant = (x * 13 + y * 7) % 3;
+          const n0 = this.tileNoise(x, y, 1);
+          const n1 = this.tileNoise(x, y, 2);
+          const n2 = this.tileNoise(x, y, 4);
+          const macroFloor = this.tileNoise(Math.floor(x / 3), Math.floor(y / 3), 8);
+          const macroWall = this.tileNoise(Math.floor(x / 2), Math.floor(y / 2), 9);
+          const floorMix = n0 * 0.56 + macroFloor * 0.44;
+          const wallMix = n1 * 0.54 + macroWall * 0.46;
+          const floorVariant = floorMix < 0.35 ? 0 : floorMix < 0.72 ? 1 : 2;
+          const wallVariant = wallMix < 0.34 ? 0 : wallMix < 0.68 ? 1 : 2;
 
           if (isWall && !obstacleTile) {
-            ctx.fillStyle = palette.wall[variant];
-            ctx.fillRect(tx, ty, map.tileSize, map.tileSize);
-            ctx.strokeStyle = "rgba(255,255,255,0.08)";
-            ctx.strokeRect(tx + 1, ty + 1, map.tileSize - 2, map.tileSize - 2);
+            ctx.fillStyle = palette.wall[wallVariant];
+            ctx.fillRect(tx, ty, ts, ts);
+            if (n0 > 0.76) {
+              ctx.fillStyle = "rgba(255,255,255,0.02)";
+              ctx.fillRect(tx + 1, ty + 1, ts - 2, 1);
+            }
+            if (n2 > 0.78) {
+              ctx.fillStyle = "rgba(0,0,0,0.11)";
+              ctx.fillRect(tx + ts * 0.25, ty + ts * 0.2, 2, 2);
+            }
           } else {
-            ctx.fillStyle = palette.floor[variant];
-            ctx.fillRect(tx, ty, map.tileSize, map.tileSize);
-            ctx.strokeStyle = "rgba(255,255,255,0.03)";
-            ctx.strokeRect(tx + 0.5, ty + 0.5, map.tileSize - 1, map.tileSize - 1);
+            ctx.fillStyle = palette.floor[floorVariant];
+            ctx.fillRect(tx, ty, ts, ts);
+            if (n1 > 0.86) {
+              ctx.fillStyle = "rgba(255,255,255,0.03)";
+              ctx.beginPath();
+              ctx.ellipse(tx + ts * 0.56, ty + ts * 0.46, ts * 0.24, ts * 0.18, 0, 0, Math.PI * 2);
+              ctx.fill();
+            } else if (n1 < 0.08) {
+              ctx.fillStyle = "rgba(0,0,0,0.03)";
+              ctx.fillRect(tx + ts * 0.2, ty + ts * 0.2, ts * 0.6, ts * 0.6);
+            }
+            if (n2 > 0.91) {
+              ctx.fillStyle = "rgba(255,255,255,0.04)";
+              ctx.fillRect(tx + ts * 0.64, ty + ts * 0.32, 1, 1);
+            }
           }
         }
       }
 
+      for (let y = 0; y < map.rows; y += 2) {
+        for (let x = 0; x < map.cols; x += 2) {
+          if (map.tiles[y][x] === CG.MapSystem.WALL) continue;
+          const m = this.tileNoise(x >> 1, y >> 1, 11);
+          if (m > 0.64) {
+            ctx.fillStyle = m > 0.82 ? "rgba(255,255,255,0.014)" : "rgba(0,0,0,0.017)";
+            ctx.fillRect(x * ts, y * ts, ts * 2, ts * 2);
+          }
+        }
+      }
+
+      const terrainTint = ctx.createLinearGradient(0, 0, map.widthPx, map.heightPx);
+      terrainTint.addColorStop(0, "rgba(255,255,255,0.03)");
+      terrainTint.addColorStop(0.5, "rgba(0,0,0,0)");
+      terrainTint.addColorStop(1, "rgba(0,0,0,0.06)");
+      ctx.fillStyle = terrainTint;
+      ctx.fillRect(0, 0, map.widthPx, map.heightPx);
+      this.drawStyleMaterialLayer(map, palette);
+
       this.drawDecorations(map, palette);
-      this.drawObstacleProps(map);
+      this.drawObstacleProps(map, palette);
 
       const vignette = ctx.createRadialGradient(
         map.widthPx * 0.5,
@@ -76,6 +155,116 @@
       vignette.addColorStop(1, "rgba(0,0,0,0.22)");
       ctx.fillStyle = vignette;
       ctx.fillRect(0, 0, map.widthPx, map.heightPx);
+    }
+
+    drawStyleMaterialLayer(map, palette) {
+      const { ctx } = this;
+      const ts = map.tileSize;
+
+      for (let y = 0; y < map.rows; y += 1) {
+        for (let x = 0; x < map.cols; x += 1) {
+          if (map.tiles[y][x] === CG.MapSystem.WALL) continue;
+          const tx = x * ts;
+          const ty = y * ts;
+          const n0 = this.tileNoise(x, y, 31);
+          const n1 = this.tileNoise(x, y, 32);
+          const n2 = this.tileNoise(x, y, 33);
+
+          if (map.style === "forest") {
+            if (n0 > 0.78) {
+              ctx.fillStyle = "rgba(143,182,108,0.14)";
+              ctx.beginPath();
+              ctx.ellipse(tx + ts * 0.54, ty + ts * 0.5, ts * 0.36, ts * 0.24, 0, 0, Math.PI * 2);
+              ctx.fill();
+            }
+            if (n1 < 0.12) {
+              ctx.strokeStyle = "rgba(171,146,104,0.22)";
+              ctx.lineWidth = 1;
+              ctx.beginPath();
+              ctx.moveTo(tx + ts * 0.25, ty + ts * 0.74);
+              ctx.lineTo(tx + ts * 0.42, ty + ts * 0.56);
+              ctx.lineTo(tx + ts * 0.61, ty + ts * 0.76);
+              ctx.stroke();
+            }
+            if (n2 > 0.9) {
+              ctx.fillStyle = "rgba(213,231,161,0.18)";
+              ctx.fillRect(tx + ts * 0.66, ty + ts * 0.28, 2, 2);
+            }
+          } else if (map.style === "swamp") {
+            if (n0 > 0.74) {
+              ctx.fillStyle = "rgba(61,94,95,0.2)";
+              ctx.beginPath();
+              ctx.ellipse(tx + ts * 0.56, ty + ts * 0.55, ts * 0.33, ts * 0.2, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.strokeStyle = "rgba(129,183,173,0.18)";
+              ctx.lineWidth = 1;
+              ctx.beginPath();
+              ctx.ellipse(tx + ts * 0.56, ty + ts * 0.55, ts * 0.24, ts * 0.13, 0, 0, Math.PI * 2);
+              ctx.stroke();
+            }
+            if (n1 < 0.1) {
+              ctx.strokeStyle = "rgba(44,69,67,0.26)";
+              ctx.lineWidth = 1;
+              ctx.beginPath();
+              ctx.moveTo(tx + ts * 0.18, ty + ts * 0.22);
+              ctx.lineTo(tx + ts * 0.76, ty + ts * 0.68);
+              ctx.stroke();
+            }
+            if (n2 > 0.88) {
+              ctx.fillStyle = "rgba(182,219,199,0.12)";
+              ctx.fillRect(tx + ts * 0.2, ty + ts * 0.32, 2, 1);
+            }
+          } else if (map.style === "ruins") {
+            if (n0 > 0.72) {
+              ctx.fillStyle = "rgba(210,201,181,0.12)";
+              ctx.fillRect(tx + ts * 0.22, ty + ts * 0.28, 2, 2);
+              ctx.fillRect(tx + ts * 0.58, ty + ts * 0.61, 2, 2);
+            }
+            if (n1 < 0.14) {
+              ctx.strokeStyle = "rgba(53,47,41,0.24)";
+              ctx.lineWidth = 1;
+              ctx.beginPath();
+              ctx.moveTo(tx + ts * 0.16, ty + ts * 0.68);
+              ctx.lineTo(tx + ts * 0.4, ty + ts * 0.44);
+              ctx.lineTo(tx + ts * 0.74, ty + ts * 0.62);
+              ctx.stroke();
+            }
+            if (n2 > 0.86) {
+              ctx.fillStyle = "rgba(82,74,65,0.12)";
+              ctx.fillRect(tx + ts * 0.7, ty + ts * 0.24, 2, 2);
+            }
+          } else if (map.style === "citadel") {
+            if (n0 > 0.8) {
+              ctx.strokeStyle = "rgba(170,142,205,0.16)";
+              ctx.lineWidth = 1;
+              ctx.beginPath();
+              ctx.moveTo(tx + ts * 0.22, ty + ts * 0.24);
+              ctx.lineTo(tx + ts * 0.68, ty + ts * 0.7);
+              ctx.stroke();
+            }
+          }
+        }
+      }
+
+      if (map.style === "forest") {
+        const fog = ctx.createLinearGradient(0, 0, 0, map.heightPx);
+        fog.addColorStop(0, "rgba(189,220,153,0.05)");
+        fog.addColorStop(1, "rgba(62,99,59,0.02)");
+        ctx.fillStyle = fog;
+        ctx.fillRect(0, 0, map.widthPx, map.heightPx);
+      } else if (map.style === "swamp") {
+        const damp = ctx.createLinearGradient(0, 0, map.widthPx, map.heightPx);
+        damp.addColorStop(0, "rgba(129,171,160,0.04)");
+        damp.addColorStop(1, "rgba(34,64,61,0.08)");
+        ctx.fillStyle = damp;
+        ctx.fillRect(0, 0, map.widthPx, map.heightPx);
+      } else if (map.style === "ruins") {
+        const dust = ctx.createLinearGradient(0, 0, map.widthPx, map.heightPx);
+        dust.addColorStop(0, "rgba(212,198,166,0.04)");
+        dust.addColorStop(1, "rgba(110,98,81,0.06)");
+        ctx.fillStyle = dust;
+        ctx.fillRect(0, 0, map.widthPx, map.heightPx);
+      }
     }
 
     drawDecorations(map, palette) {
@@ -125,25 +314,47 @@
       }
     }
 
-    drawObstacleProps(map) {
+    drawObstacleProps(map, palette) {
       const { ctx } = this;
       const props = (map.obstacleProps || []).slice().sort((a, b) => (a.depthY || a.y + a.h) - (b.depthY || b.y + b.h));
+      const tone = this.propToneByStyle[map.style] || this.propToneByStyle.forest;
 
       for (const prop of props) {
         const c = prop.collider;
         if (c) {
-          ctx.fillStyle = "rgba(0, 0, 0, 0.24)";
+          const baseX = c.x + c.w * 0.5;
+          const baseY = c.y + c.h * 0.9;
+          ctx.fillStyle = tone.ground;
           ctx.beginPath();
           ctx.ellipse(
-            c.x + c.w * 0.5,
-            c.y + c.h * 0.92,
-            Math.max(8, c.w * 0.58),
-            Math.max(5, c.h * 0.34),
+            baseX,
+            baseY,
+            Math.max(11, c.w * 0.78),
+            Math.max(7, c.h * 0.38),
             0,
             0,
             Math.PI * 2
           );
           ctx.fill();
+
+          ctx.fillStyle = "rgba(0, 0, 0, 0.09)";
+          ctx.beginPath();
+          ctx.ellipse(
+            baseX,
+            baseY + 1,
+            Math.max(7, c.w * 0.48),
+            Math.max(4, c.h * 0.16),
+            0,
+            0,
+            Math.PI * 2
+          );
+          ctx.fill();
+
+          ctx.strokeStyle = tone.edge;
+          ctx.lineWidth = 0.9;
+          ctx.beginPath();
+          ctx.ellipse(baseX, baseY, Math.max(9, c.w * 0.6), Math.max(6, c.h * 0.28), 0, 0, Math.PI * 2);
+          ctx.stroke();
         }
 
         const img = CG.SpriteSystem.getImage(prop.path);
@@ -153,13 +364,25 @@
           const drawX = Math.round(prop.x);
           const drawY = Math.round(prop.y);
           ctx.drawImage(img, drawX, drawY, drawW, drawH);
+
+          ctx.save();
+          ctx.globalCompositeOperation = "source-atop";
+          ctx.globalAlpha = 0.6;
+          ctx.fillStyle = tone.tint;
+          ctx.fillRect(drawX, drawY, drawW, drawH);
+          ctx.globalCompositeOperation = "multiply";
+          ctx.globalAlpha = 0.42;
+          ctx.fillStyle = tone.shade;
+          ctx.fillRect(drawX, drawY, drawW, drawH);
+          ctx.restore();
+
           continue;
         }
 
         if (c) {
-          ctx.fillStyle = "rgba(16, 30, 18, 0.38)";
+          ctx.fillStyle = palette ? palette.wall[1] : "rgba(70, 90, 70, 0.65)";
           ctx.fillRect(c.x, c.y, c.w, c.h);
-          ctx.strokeStyle = "rgba(190, 245, 200, 0.25)";
+          ctx.strokeStyle = tone.edge;
           ctx.strokeRect(c.x + 0.5, c.y + 0.5, c.w - 1, c.h - 1);
         }
       }
@@ -184,33 +407,74 @@
       if (!game.currentRoom || !game.currentRoom.isCamp || !game.currentRoom.merchant) return;
       const { ctx } = this;
       const m = game.currentRoom.merchant;
+      const t = performance.now() * 0.0026;
+      const sway = Math.sin(t) * 1.4;
+      const lantern = 1 + Math.sin(t * 1.8) * 0.14;
 
       ctx.save();
-      ctx.fillStyle = "rgba(0,0,0,0.28)";
+      ctx.fillStyle = "rgba(0,0,0,0.3)";
       ctx.beginPath();
-      ctx.ellipse(m.x, m.y + m.radius * 0.88, m.radius * 1.15, m.radius * 0.48, 0, 0, Math.PI * 2);
+      ctx.ellipse(m.x, m.y + m.radius * 1.02, m.radius * 1.8, m.radius * 0.7, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.fillStyle = "#5f4734";
+      ctx.fillStyle = "#654833";
+      ctx.fillRect(m.x - 34, m.y + 3, 68, 20);
+
+      ctx.fillStyle = "#775741";
+      ctx.fillRect(m.x - 30, m.y + 3, 10, 20);
+      ctx.fillRect(m.x + 20, m.y + 3, 10, 20);
+
+      ctx.fillStyle = "#8b3e36";
       ctx.beginPath();
-      ctx.arc(m.x, m.y, m.radius, 0, Math.PI * 2);
+      ctx.moveTo(m.x - 40, m.y + 2);
+      ctx.lineTo(m.x - 28, m.y - 22);
+      ctx.lineTo(m.x + 28, m.y - 22);
+      ctx.lineTo(m.x + 40, m.y + 2);
+      ctx.closePath();
       ctx.fill();
 
-      ctx.fillStyle = "#f4d8aa";
+      ctx.strokeStyle = "rgba(255,232,186,0.55)";
+      ctx.lineWidth = 1.2;
       ctx.beginPath();
-      ctx.arc(m.x, m.y - 4, m.radius * 0.55, 0, Math.PI * 2);
+      ctx.moveTo(m.x - 30, m.y - 10);
+      ctx.lineTo(m.x + 30, m.y - 10);
+      ctx.stroke();
+
+      ctx.fillStyle = "#2f3f62";
+      ctx.beginPath();
+      ctx.ellipse(m.x + sway * 0.5, m.y - 2, 10, 12, 0, 0, Math.PI * 2);
       ctx.fill();
+      ctx.fillStyle = "#f2d6b3";
+      ctx.beginPath();
+      ctx.arc(m.x + sway, m.y - 8, 6.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#e8c69a";
+      ctx.fillRect(m.x - 3 + sway, m.y - 3, 6, 6);
 
       ctx.strokeStyle = "#ffd88d";
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 1.6;
       ctx.beginPath();
-      ctx.arc(m.x, m.y, m.radius + 8, 0, Math.PI * 2);
+      ctx.arc(m.x - 46, m.y - 3, 6.5 * lantern, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = `rgba(255,216,141,${0.24 + 0.16 * lantern})`;
+      ctx.beginPath();
+      ctx.arc(m.x - 46, m.y - 3, 11 * lantern, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = "#6c4d39";
+      ctx.fillRect(m.x + 36, m.y + 7, 12, 12);
+      ctx.fillRect(m.x + 50, m.y + 10, 10, 9);
+
+      ctx.strokeStyle = "rgba(255,198,120,0.65)";
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.arc(m.x, m.y - 2, m.radius + 9, 0, Math.PI * 2);
       ctx.stroke();
 
       ctx.fillStyle = "#ffe7b7";
       ctx.font = "11px sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText("商人", m.x, m.y - m.radius - 10);
+      ctx.fillText("营地商人", m.x, m.y - m.radius - 12);
       ctx.restore();
     }
 
@@ -559,7 +823,11 @@
       );
       ctx.fillStyle = "#fff";
       ctx.font = "20px sans-serif";
-      ctx.fillText("按 Enter 回到职业选择", this.canvas.width / 2, this.canvas.height / 2 + 36);
+      const tip =
+        game.state === GAME_STATES.GAME_OVER && !game.scoreSubmitted
+          ? "请先提交名称成绩，再按 Enter 回到职业选择"
+          : "按 Enter 回到职业选择";
+      ctx.fillText(tip, this.canvas.width / 2, this.canvas.height / 2 + 36);
     }
   }
 
