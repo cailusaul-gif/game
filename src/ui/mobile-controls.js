@@ -12,6 +12,7 @@
       const ua = window.navigator.userAgent || "";
       const coarse = window.matchMedia("(pointer: coarse)").matches;
       const uaMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(ua);
+      this.isIOS = /iPhone|iPad|iPod/i.test(ua);
       this.touchDevice = uaMobile || (coarse && Math.min(window.innerWidth, window.innerHeight) <= 900);
 
       if (!this.input || !this.root || !this.touchDevice) {
@@ -121,6 +122,10 @@
           e.preventDefault();
           if (this.locked) return;
           this.fullscreenBtn.classList.add("active");
+          if (this.isIOS && !this.canNativeFullscreen() && !this.isStandaloneMode()) {
+            this.showFullscreenHint("分享 -> 添加到主屏幕");
+            return;
+          }
           this.toggleFullscreen();
         });
         this.fullscreenBtn.addEventListener("pointerup", clear);
@@ -175,7 +180,28 @@
       );
     }
 
+    canNativeFullscreen() {
+      const el = document.documentElement;
+      return !!(el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen);
+    }
+
+    isStandaloneMode() {
+      return !!(
+        window.matchMedia("(display-mode: standalone)").matches ||
+        window.navigator.standalone === true
+      );
+    }
+
     async toggleFullscreen() {
+      if (!this.canNativeFullscreen()) {
+        if (this.isStandaloneMode()) {
+          this.showFullscreenHint("已是主屏全屏模式");
+        } else {
+          this.showFullscreenHint(this.isIOS ? "分享 -> 添加到主屏幕" : "请用浏览器菜单全屏");
+        }
+        return;
+      }
+
       if (this.isFullscreen()) {
         if (document.exitFullscreen) {
           await document.exitFullscreen();
@@ -203,12 +229,16 @@
           this.showFullscreenHint("浏览器不支持全屏");
         }
       } catch (_err) {
-        this.showFullscreenHint("请用浏览器菜单全屏");
+        this.showFullscreenHint(this.isIOS ? "分享 -> 添加到主屏幕" : "请用浏览器菜单全屏");
       }
     }
 
     syncFullscreenLabel() {
       if (!this.fullscreenBtn) return;
+      if (this.isIOS && !this.canNativeFullscreen() && !this.isStandaloneMode()) {
+        this.fullscreenBtn.textContent = "加到主屏";
+        return;
+      }
       this.fullscreenBtn.textContent = this.isFullscreen() ? "退出全屏" : "全屏";
     }
 

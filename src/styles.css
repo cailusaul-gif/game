@@ -67,9 +67,8 @@ body {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  padding: 8px;
-  display: grid;
-  grid-template-rows: auto 1fr;
+  padding: 0;
+  display: block;
 }
 
 .mobile-controls.hidden {
@@ -81,18 +80,25 @@ body {
 }
 
 .mc-top-row {
+  position: absolute;
+  top: 8px;
+  top: calc(8px + env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
   pointer-events: none;
   display: none;
   flex-wrap: wrap;
   justify-content: center;
   gap: 6px;
-  margin: 40px 72px 6px 0;
+  margin: 0;
 }
 
 .mc-bottom-row {
+  display: block;
   pointer-events: none;
-  position: relative;
-  height: 100%;
+  position: absolute;
+  inset: 0;
 }
 
 .mobile-controls.menu-state .mc-top-row {
@@ -106,16 +112,20 @@ body {
 .mc-left,
 .mc-right {
   position: absolute;
-  bottom: max(8px, env(safe-area-inset-bottom));
+  bottom: 8px;
+  bottom: calc(8px + env(safe-area-inset-bottom));
   pointer-events: none;
+  z-index: 3;
 }
 
 .mc-left {
-  left: max(8px, env(safe-area-inset-left));
+  left: 8px;
+  left: calc(8px + env(safe-area-inset-left));
 }
 
 .mc-right {
-  right: max(8px, env(safe-area-inset-right));
+  right: 8px;
+  right: calc(8px + env(safe-area-inset-right));
 }
 
 .mc-dpad {
@@ -162,9 +172,11 @@ body {
 
 .mc-fs {
   position: absolute;
-  top: max(8px, env(safe-area-inset-top));
-  right: max(8px, env(safe-area-inset-right));
-  min-width: 74px;
+  top: 8px;
+  top: calc(8px + env(safe-area-inset-top));
+  right: 8px;
+  right: calc(8px + env(safe-area-inset-right));
+  min-width: 88px;
   z-index: 4;
   border-color: rgba(164, 212, 255, 0.88);
   background: rgba(37, 85, 140, 0.6);
@@ -411,8 +423,11 @@ body.mobile-mode .app {
   display: grid;
   grid-template-rows: auto auto 1fr auto;
   gap: 8px;
-  padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right))
-    max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+  padding: 8px;
+  padding-top: calc(8px + env(safe-area-inset-top));
+  padding-right: calc(8px + env(safe-area-inset-right));
+  padding-bottom: calc(8px + env(safe-area-inset-bottom));
+  padding-left: calc(8px + env(safe-area-inset-left));
 }
 
 body.mobile-mode .hud-top h1 {
@@ -433,6 +448,12 @@ body.mobile-mode .rank-panel {
 }
 
 @media (orientation: landscape) and (max-height: 540px) {
+  .mc-left,
+  .mc-right {
+    bottom: 6px;
+    bottom: calc(6px + env(safe-area-inset-bottom));
+  }
+
   .mc-dpad {
     width: 96px;
     height: 96px;
