@@ -40,6 +40,7 @@
 
     render() {
       this.root.innerHTML = `
+        <button class="mc-btn mc-fs" data-role="fullscreen">全屏</button>
         <div class="mc-top-row">
           <button class="mc-btn tap" data-tap="KeyQ">武士</button>
           <button class="mc-btn tap" data-tap="KeyW">弓箭手</button>
@@ -66,6 +67,7 @@
         </div>
       `;
       this.utilityBtn = this.root.querySelector('[data-role="utility"]');
+      this.fullscreenBtn = this.root.querySelector('[data-role="fullscreen"]');
       this.root.classList.remove("hidden");
     }
 
@@ -111,6 +113,25 @@
         btn.addEventListener("pointercancel", release);
         btn.addEventListener("pointerleave", release);
       }
+
+      if (this.fullscreenBtn) {
+        const clear = () => this.fullscreenBtn.classList.remove("active");
+        this.fullscreenBtn.addEventListener("contextmenu", (e) => e.preventDefault());
+        this.fullscreenBtn.addEventListener("pointerdown", (e) => {
+          e.preventDefault();
+          if (this.locked) return;
+          this.fullscreenBtn.classList.add("active");
+          this.toggleFullscreen();
+        });
+        this.fullscreenBtn.addEventListener("pointerup", clear);
+        this.fullscreenBtn.addEventListener("pointercancel", clear);
+        this.fullscreenBtn.addEventListener("pointerleave", clear);
+      }
+
+      const sync = this.syncFullscreenLabel.bind(this);
+      document.addEventListener("fullscreenchange", sync);
+      document.addEventListener("webkitfullscreenchange", sync);
+      sync();
     }
 
     releaseHeldButtons() {
@@ -129,6 +150,9 @@
       this.root.classList.toggle("locked", this.locked);
       if (this.rotateHint) this.rotateHint.classList.toggle("hidden", isLandscape);
       if (this.locked) this.releaseHeldButtons();
+      if (isLandscape) {
+        window.setTimeout(() => window.scrollTo(0, 1), 60);
+      }
     }
 
     syncGameState() {
@@ -141,6 +165,57 @@
         this.utilityBtn.setAttribute("data-tap", inCamp ? "KeyE" : "KeyT");
         this.utilityBtn.textContent = inCamp ? "交" : "疗";
       }
+    }
+
+    isFullscreen() {
+      return !!(
+        document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        document.msFullscreenElement
+      );
+    }
+
+    async toggleFullscreen() {
+      if (this.isFullscreen()) {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) {
+          document.webkitExitFullscreen();
+        } else if (document.msExitFullscreen) {
+          document.msExitFullscreen();
+        }
+        return;
+      }
+
+      const el = document.documentElement;
+      try {
+        if (el.requestFullscreen) {
+          try {
+            await el.requestFullscreen({ navigationUI: "hide" });
+          } catch (_err) {
+            await el.requestFullscreen();
+          }
+        } else if (el.webkitRequestFullscreen) {
+          el.webkitRequestFullscreen();
+        } else if (el.msRequestFullscreen) {
+          el.msRequestFullscreen();
+        } else {
+          this.showFullscreenHint("浏览器不支持全屏");
+        }
+      } catch (_err) {
+        this.showFullscreenHint("请用浏览器菜单全屏");
+      }
+    }
+
+    syncFullscreenLabel() {
+      if (!this.fullscreenBtn) return;
+      this.fullscreenBtn.textContent = this.isFullscreen() ? "退出全屏" : "全屏";
+    }
+
+    showFullscreenHint(text) {
+      if (!this.fullscreenBtn) return;
+      this.fullscreenBtn.textContent = text;
+      window.setTimeout(() => this.syncFullscreenLabel(), 1400);
     }
   }
 

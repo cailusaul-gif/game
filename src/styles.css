@@ -86,7 +86,7 @@ body {
   flex-wrap: wrap;
   justify-content: center;
   gap: 6px;
-  margin-bottom: 6px;
+  margin: 40px 72px 6px 0;
 }
 
 .mc-bottom-row {
@@ -158,6 +158,16 @@ body {
 .mc-btn.main {
   border-color: rgba(146, 255, 182, 0.8);
   background: rgba(57, 143, 89, 0.55);
+}
+
+.mc-fs {
+  position: absolute;
+  top: max(8px, env(safe-area-inset-top));
+  right: max(8px, env(safe-area-inset-right));
+  min-width: 74px;
+  z-index: 4;
+  border-color: rgba(164, 212, 255, 0.88);
+  background: rgba(37, 85, 140, 0.6);
 }
 
 .mc-btn.primary {
