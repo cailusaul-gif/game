@@ -203,8 +203,12 @@
     }
 
     advanceAfterLevelComplete() {
+      const revivedPlayers = [];
       for (const player of this.players) {
-        if (!player.alive) continue;
+        if (!player.alive) {
+          player.revive(0.5);
+          revivedPlayers.push(player);
+        }
         player.potions = player.maxHealsPerRun;
       }
 
@@ -213,6 +217,21 @@
         this.enterCamp(nextLevel);
       } else {
         this.enterCombatLevel(nextLevel);
+      }
+
+      if (revivedPlayers.length > 0) {
+        const names = revivedPlayers.map((p) => p.id).join("、");
+        this.log += ` | ${names} 已复活`;
+        for (const player of revivedPlayers) {
+          this.effects.push({
+            kind: "revive",
+            x: player.x,
+            y: player.y,
+            r: player.radius + 14,
+            t: 0.25,
+            color: "rgba(146,255,171,0.5)",
+          });
+        }
       }
     }
 

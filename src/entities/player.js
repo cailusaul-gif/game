@@ -149,6 +149,22 @@
       this.potions = Math.min(this.maxHealsPerRun, this.potions + count);
     }
 
+    revive(hpRatio) {
+      const ratio = clamp(hpRatio == null ? 0.5 : hpRatio, 0.1, 1);
+      this.alive = true;
+      this.hp = Math.max(1, this.stats.maxHp * ratio);
+      this.attackTimer = 0;
+      this.rollTimer = 0;
+      this.rollCooldown = 0;
+      this.skillTimer = 0;
+      this.invincible = false;
+      this.spriteHurtTimer = 0;
+      this.barrierTimer = 0;
+      this.barrierValue = 0;
+      this.slowTimer = 0;
+      this.slowMul = 1;
+    }
+
     addGold(amount) {
       this.gold += amount;
     }
