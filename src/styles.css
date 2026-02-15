@@ -91,14 +91,8 @@ body {
 
 .mc-bottom-row {
   pointer-events: none;
-  display: flex;
-  justify-content: space-between;
-  align-items: end;
-  gap: 10px;
-}
-
-.mc-bottom-row.single {
-  justify-content: flex-start;
+  position: relative;
+  height: 100%;
 }
 
 .mobile-controls.menu-state .mc-top-row {
@@ -109,24 +103,19 @@ body {
   display: none;
 }
 
-.mc-zone {
-  display: flex;
-  align-items: end;
-  gap: 8px;
+.mc-left,
+.mc-right {
+  position: absolute;
+  bottom: max(8px, env(safe-area-inset-bottom));
+  pointer-events: none;
 }
 
-.mc-label {
-  align-self: start;
-  padding: 2px 6px;
-  border-radius: 999px;
-  font-size: 0.7rem;
-  color: #f7f9ff;
-  background: rgba(4, 9, 16, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.16);
+.mc-left {
+  left: max(8px, env(safe-area-inset-left));
 }
 
-.mc-zone.p1 .mc-label {
-  color: #ffd79f;
+.mc-right {
+  right: max(8px, env(safe-area-inset-right));
 }
 
 .mc-dpad {
@@ -138,10 +127,15 @@ body {
 
 .mc-actions {
   pointer-events: none;
-  width: 132px;
+  width: 120px;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 4px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.mc-actions.compact .mc-btn {
+  min-height: 40px;
+  font-size: 0.8rem;
 }
 
 .mc-btn {
@@ -456,13 +450,18 @@ body.mobile-mode .rank-panel {
   }
 
   .mc-actions {
-    width: 114px;
+    width: 108px;
   }
 
   .mc-btn {
-    min-height: 26px;
+    min-height: 30px;
     font-size: 0.66rem;
     padding: 5px 4px;
+  }
+
+  .mc-actions.compact .mc-btn {
+    min-height: 34px;
+    font-size: 0.72rem;
   }
 }
 

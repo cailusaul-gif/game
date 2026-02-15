@@ -46,40 +46,37 @@
           <button class="mc-btn tap" data-tap="KeyE">魔法师</button>
           <button class="mc-btn tap main" data-tap="Enter">开始/继续</button>
         </div>
-        <div class="mc-bottom-row single">
-          <section class="mc-zone p1">
-            <div class="mc-label">P1</div>
+        <div class="mc-bottom-row">
+          <section class="mc-left">
             <div class="mc-dpad">
               <button class="mc-btn hold up" data-hold="KeyW">▲</button>
               <button class="mc-btn hold left" data-hold="KeyA">◀</button>
               <button class="mc-btn hold right" data-hold="KeyD">▶</button>
               <button class="mc-btn hold down" data-hold="KeyS">▼</button>
             </div>
-            <div class="mc-actions">
+          </section>
+          <section class="mc-right">
+            <div class="mc-actions compact">
               <button class="mc-btn tap primary" data-tap="KeyF">攻</button>
               <button class="mc-btn tap" data-tap="KeyG">滚</button>
               <button class="mc-btn tap" data-tap="KeyR">技</button>
-              <button class="mc-btn tap" data-tap="KeyT">疗</button>
-              <button class="mc-btn tap" data-tap="KeyE">交</button>
-              <button class="mc-btn tap" data-tap="KeyC">选◀</button>
-              <button class="mc-btn tap" data-tap="KeyV">选▶</button>
-              <button class="mc-btn tap" data-tap="KeyB">装</button>
-              <button class="mc-btn tap" data-tap="KeyX">丢</button>
+              <button class="mc-btn tap" data-role="utility" data-tap="KeyT">疗</button>
             </div>
           </section>
         </div>
       `;
+      this.utilityBtn = this.root.querySelector('[data-role="utility"]');
       this.root.classList.remove("hidden");
     }
 
     bindButtons() {
       const tapButtons = this.root.querySelectorAll("[data-tap]");
       for (const btn of tapButtons) {
-        const code = btn.getAttribute("data-tap");
         btn.addEventListener("contextmenu", (e) => e.preventDefault());
         btn.addEventListener("pointerdown", (e) => {
           e.preventDefault();
           if (this.locked) return;
+          const code = btn.getAttribute("data-tap");
           this.input.tapVirtual(code);
           btn.classList.add("active");
         });
@@ -138,6 +135,12 @@
       const state = this.game?.state;
       const playing = state === CG.CONSTANTS?.GAME_STATES?.PLAYING;
       this.root.classList.toggle("menu-state", !playing);
+
+      if (this.utilityBtn) {
+        const inCamp = !!this.game?.currentRoom?.isCamp;
+        this.utilityBtn.setAttribute("data-tap", inCamp ? "KeyE" : "KeyT");
+        this.utilityBtn.textContent = inCamp ? "交" : "疗";
+      }
     }
   }
 
