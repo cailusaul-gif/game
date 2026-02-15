@@ -143,6 +143,16 @@
     },
   ];
 
+  const ITEM_GROWTH_CURVE = [
+    { minRarity: "common", statScale: 1, powerScale: 1, rarityBoost: 0 },
+    { minRarity: "common", statScale: 1.08, powerScale: 1.05, rarityBoost: 0.18 },
+    { minRarity: "rare", statScale: 1.16, powerScale: 1.1, rarityBoost: 0.28 },
+    { minRarity: "rare", statScale: 1.26, powerScale: 1.16, rarityBoost: 0.4 },
+    { minRarity: "epic", statScale: 1.38, powerScale: 1.23, rarityBoost: 0.55 },
+    { minRarity: "epic", statScale: 1.52, powerScale: 1.3, rarityBoost: 0.72 },
+    { minRarity: "legendary", statScale: 1.68, powerScale: 1.38, rarityBoost: 0.9 },
+  ];
+
   function makeStarterItem(classKey) {
     if (classKey === "samurai") {
       return {
@@ -188,6 +198,39 @@
     };
   }
 
+  function rarityIndex(rarityKey) {
+    if (!rarityKey) return -1;
+    return ITEM_RARITY.findIndex((r) => r.key === rarityKey);
+  }
+
+  function higherRarityKey(a, b) {
+    const aIndex = rarityIndex(a);
+    const bIndex = rarityIndex(b);
+    const index = Math.max(aIndex, bIndex, 0);
+    return ITEM_RARITY[index] ? ITEM_RARITY[index].key : ITEM_RARITY[0].key;
+  }
+
+  function growthTierFromLevel(levelIndex) {
+    const level = Math.max(1, Math.floor(levelIndex || 1));
+    return Math.floor((level - 1) / 3);
+  }
+
+  function getGrowthForLevel(levelIndex) {
+    const tier = growthTierFromLevel(levelIndex);
+    if (tier < ITEM_GROWTH_CURVE.length) {
+      return ITEM_GROWTH_CURVE[tier];
+    }
+
+    const last = ITEM_GROWTH_CURVE[ITEM_GROWTH_CURVE.length - 1];
+    const extra = tier - (ITEM_GROWTH_CURVE.length - 1);
+    return {
+      minRarity: last.minRarity,
+      statScale: last.statScale * (1 + extra * 0.08),
+      powerScale: last.powerScale * (1 + extra * 0.07),
+      rarityBoost: Math.min(1.45, last.rarityBoost + extra * 0.08),
+    };
+  }
+
   function pickWeighted(arr, usedKeys) {
     const pool = arr.filter((p) => !usedKeys.has(p.key));
     if (pool.length <= 0) return null;
@@ -200,52 +243,57 @@
     return pool[0];
   }
 
-  function rollInRange([min, max], rarityMul) {
+  function rollInRange([min, max], qualityMul) {
     const t = randFloat(min, max);
-    return t * (1 + (rarityMul - 1) * 0.65);
+    return t * (1 + (qualityMul - 1) * 0.65);
   }
 
-  function rollProcCount(rarity) {
-    if (rarity.key === "legendary") return randInt(2, 4);
-    if (rarity.key === "epic") return randInt(1, 3);
-    if (rarity.key === "rare") return Math.random() < 0.75 ? 1 : 0;
-    return Math.random() < 0.28 ? 1 : 0;
+  function rollProcCount(rarity, powerScale) {
+    const extraProcChance = clamp((powerScale - 1) * 0.55, 0, 0.45);
+    if (rarity.key === "legendary") {
+      return randInt(2, 4) + (Math.random() < extraProcChance ? 1 : 0);
+    }
+    if (rarity.key === "epic") {
+      return randInt(1, 3) + (Math.random() < extraProcChance * 0.75 ? 1 : 0);
+    }
+    if (rarity.key === "rare") return Math.random() < 0.75 + extraProcChance * 0.4 ? 1 : 0;
+    return Math.random() < 0.28 + extraProcChance * 0.5 ? 1 : 0;
   }
 
-  function makePower(def, slot, rarity) {
-    const rarityMul = rarity.mul || 1;
+  function makePower(def, slot, rarity, powerScale) {
+    const qualityMul = (rarity.mul || 1) * powerScale;
     const proc = {
       key: def.key,
       name: def.name,
       trigger: def.trigger,
-      chance: clamp(rollInRange(def.chance, rarityMul), 0.04, 0.9),
-      cooldown: Math.max(0.3, randFloat(def.cooldown[0], def.cooldown[1]) / (1 + (rarityMul - 1) * 0.45)),
-      power: def.power ? rollInRange(def.power, rarityMul) : 0,
+      chance: clamp(rollInRange(def.chance, qualityMul), 0.04, 0.9),
+      cooldown: Math.max(0.3, randFloat(def.cooldown[0], def.cooldown[1]) / (1 + (qualityMul - 1) * 0.45)),
+      power: def.power ? rollInRange(def.power, qualityMul) : 0,
       slot,
     };
 
-    if (def.radius) proc.radius = Math.floor(rollInRange(def.radius, rarityMul));
-    if (def.bounces) proc.bounces = Math.max(1, Math.floor(rollInRange(def.bounces, rarityMul)));
-    if (def.count) proc.count = Math.max(1, Math.floor(rollInRange(def.count, rarityMul)));
-    if (def.threshold) proc.threshold = clamp(rollInRange(def.threshold, rarityMul), 0.1, 0.5);
-    if (def.heal) proc.heal = Math.floor(rollInRange(def.heal, rarityMul));
-    if (def.speedMul) proc.speedMul = rollInRange(def.speedMul, rarityMul);
-    if (def.damageMul) proc.damageMul = rollInRange(def.damageMul, rarityMul);
-    if (def.duration) proc.duration = rollInRange(def.duration, rarityMul);
-    if (def.bolts) proc.bolts = Math.max(4, Math.floor(rollInRange(def.bolts, rarityMul)));
-    if (def.shield) proc.shield = Math.floor(rollInRange(def.shield, rarityMul));
-    if (def.slow) proc.slow = clamp(rollInRange(def.slow, rarityMul), 0.4, 0.95);
-    if (def.slowDuration) proc.slowDuration = rollInRange(def.slowDuration, rarityMul);
-    if (def.skillRefund) proc.skillRefund = clamp(rollInRange(def.skillRefund, rarityMul), 0.15, 0.95);
-    if (def.rollRefund) proc.rollRefund = clamp(rollInRange(def.rollRefund, rarityMul), 0.1, 0.95);
-    if (def.gold) proc.gold = Math.max(1, Math.floor(rollInRange(def.gold, rarityMul)));
-    if (def.xp) proc.xp = Math.max(1, Math.floor(rollInRange(def.xp, rarityMul)));
+    if (def.radius) proc.radius = Math.floor(rollInRange(def.radius, qualityMul));
+    if (def.bounces) proc.bounces = Math.max(1, Math.floor(rollInRange(def.bounces, qualityMul)));
+    if (def.count) proc.count = Math.max(1, Math.floor(rollInRange(def.count, qualityMul)));
+    if (def.threshold) proc.threshold = clamp(rollInRange(def.threshold, qualityMul), 0.1, 0.5);
+    if (def.heal) proc.heal = Math.floor(rollInRange(def.heal, qualityMul));
+    if (def.speedMul) proc.speedMul = rollInRange(def.speedMul, qualityMul);
+    if (def.damageMul) proc.damageMul = rollInRange(def.damageMul, qualityMul);
+    if (def.duration) proc.duration = rollInRange(def.duration, qualityMul);
+    if (def.bolts) proc.bolts = Math.max(4, Math.floor(rollInRange(def.bolts, qualityMul)));
+    if (def.shield) proc.shield = Math.floor(rollInRange(def.shield, qualityMul));
+    if (def.slow) proc.slow = clamp(rollInRange(def.slow, qualityMul), 0.4, 0.95);
+    if (def.slowDuration) proc.slowDuration = rollInRange(def.slowDuration, qualityMul);
+    if (def.skillRefund) proc.skillRefund = clamp(rollInRange(def.skillRefund, qualityMul), 0.15, 0.95);
+    if (def.rollRefund) proc.rollRefund = clamp(rollInRange(def.rollRefund, qualityMul), 0.1, 0.95);
+    if (def.gold) proc.gold = Math.max(1, Math.floor(rollInRange(def.gold, qualityMul)));
+    if (def.xp) proc.xp = Math.max(1, Math.floor(rollInRange(def.xp, qualityMul)));
 
     return proc;
   }
 
-  function makeRandomPowers(slot, rarity) {
-    const count = rollProcCount(rarity);
+  function makeRandomPowers(slot, rarity, powerScale) {
+    const count = rollProcCount(rarity, powerScale);
     if (count <= 0) return [];
 
     const picks = [];
@@ -255,45 +303,61 @@
       const p = pickWeighted(filtered, used);
       if (!p) break;
       used.add(p.key);
-      picks.push(makePower(p, slot, rarity));
+      picks.push(makePower(p, slot, rarity, powerScale));
     }
 
     return picks;
   }
 
-  function pickRarity() {
-    const total = ITEM_RARITY.reduce((acc, r) => acc + r.weight, 0);
+  function pickRarity(options) {
+    const opts = options || {};
+    const minIndex = Math.max(0, rarityIndex(opts.minRarity));
+    const pool = ITEM_RARITY.slice(minIndex);
+    const rarityBoost = clamp(opts.rarityBoost || 0, 0, 2.5);
+    const weightedPool = pool.map((rarity, i) => ({
+      rarity,
+      weight: rarity.weight * (1 + rarityBoost * i),
+    }));
+
+    const total = weightedPool.reduce((acc, r) => acc + r.weight, 0);
     let roll = Math.random() * total;
-    for (const rarity of ITEM_RARITY) {
+    for (const rarity of weightedPool) {
       roll -= rarity.weight;
-      if (roll <= 0) return rarity;
+      if (roll <= 0) return rarity.rarity;
     }
-    return ITEM_RARITY[0];
+    return weightedPool[0] ? weightedPool[0].rarity : ITEM_RARITY[0];
   }
 
-  function makeRandomItem() {
+  function makeRandomItem(options) {
+    const opts = options || {};
+    const growth = getGrowthForLevel(opts.levelIndex);
+    const minRarity = higherRarityKey(growth.minRarity, opts.minRarity);
+    const statScale = growth.statScale * Math.max(0.2, opts.statScale || 1);
+    const powerScale = growth.powerScale * Math.max(0.2, opts.powerScale || 1);
+    const rarityBoost = growth.rarityBoost + Math.max(0, opts.rarityBoost || 0);
     const slot = SLOT_KEYS[randInt(0, SLOT_KEYS.length)];
     const prefix = ITEM_PREFIX[slot][randInt(0, ITEM_PREFIX[slot].length)];
-    const rarity = pickRarity();
+    const rarity = pickRarity({ minRarity, rarityBoost });
+    const qualityMul = rarity.mul * statScale;
     const bonuses = {};
 
     if (slot === "weapon") {
-      bonuses.damage = Math.floor(randInt(4, 11) * rarity.mul);
-      if (Math.random() < 0.35) bonuses.attackCooldown = -randFloat(0.02, 0.06) * rarity.mul;
-      if (Math.random() < 0.5) bonuses.critChance = randFloat(0.02, 0.08) * rarity.mul;
+      bonuses.damage = Math.floor(randInt(4, 11) * qualityMul);
+      if (Math.random() < 0.35) bonuses.attackCooldown = -randFloat(0.02, 0.06) * qualityMul;
+      if (Math.random() < 0.5) bonuses.critChance = randFloat(0.02, 0.08) * qualityMul;
     } else if (slot === "armor") {
-      bonuses.maxHp = Math.floor(randInt(12, 36) * rarity.mul);
-      if (Math.random() < 0.8) bonuses.defense = randFloat(0.02, 0.08) * rarity.mul;
+      bonuses.maxHp = Math.floor(randInt(12, 36) * qualityMul);
+      if (Math.random() < 0.8) bonuses.defense = randFloat(0.02, 0.08) * qualityMul;
     } else if (slot === "boots") {
-      bonuses.speed = Math.floor(randInt(10, 26) * rarity.mul);
-      if (Math.random() < 0.3) bonuses.rollDuration = -randFloat(0.02, 0.06) * rarity.mul;
-      if (Math.random() < 0.4) bonuses.skillHaste = randFloat(0.03, 0.1) * rarity.mul;
+      bonuses.speed = Math.floor(randInt(10, 26) * qualityMul);
+      if (Math.random() < 0.3) bonuses.rollDuration = -randFloat(0.02, 0.06) * qualityMul;
+      if (Math.random() < 0.4) bonuses.skillHaste = randFloat(0.03, 0.1) * qualityMul;
     } else {
-      bonuses.damage = Math.floor(randInt(2, 8) * rarity.mul);
-      if (Math.random() < 0.5) bonuses.maxHp = Math.floor(randInt(6, 16) * rarity.mul);
-      if (Math.random() < 0.2) bonuses.speed = Math.floor(randInt(4, 14) * rarity.mul);
-      if (Math.random() < 0.45) bonuses.lifeSteal = randFloat(0.01, 0.05) * rarity.mul;
-      if (Math.random() < 0.45) bonuses.critDamage = randFloat(0.05, 0.2) * rarity.mul;
+      bonuses.damage = Math.floor(randInt(2, 8) * qualityMul);
+      if (Math.random() < 0.5) bonuses.maxHp = Math.floor(randInt(6, 16) * qualityMul);
+      if (Math.random() < 0.2) bonuses.speed = Math.floor(randInt(4, 14) * qualityMul);
+      if (Math.random() < 0.45) bonuses.lifeSteal = randFloat(0.01, 0.05) * qualityMul;
+      if (Math.random() < 0.45) bonuses.critDamage = randFloat(0.05, 0.2) * qualityMul;
     }
 
     return {
@@ -301,7 +365,7 @@
       name: `${prefix}${SLOT_LABELS[slot]}`,
       rarity,
       bonuses,
-      powers: makeRandomPowers(slot, rarity),
+      powers: makeRandomPowers(slot, rarity, powerScale),
     };
   }
 

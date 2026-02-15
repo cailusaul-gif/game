@@ -7,7 +7,7 @@
     const offers = [];
     const n = count || 4;
     for (let i = 0; i < n; i += 1) {
-      const item = CG.EquipmentSystem.makeRandomItem();
+      const item = CG.EquipmentSystem.makeRandomItem({ levelIndex });
       const score = Math.max(10, CG.EquipmentSystem.equipmentScore(item));
       const rarityMul = item?.rarity?.mul || 1;
       const price = Math.max(
@@ -50,6 +50,8 @@
           y: this.map.heightPx * 0.5,
           radius: 24,
           restockCost: 120 + Math.max(0, this.levelIndex - 1) * 6,
+          healUpgradeCost: 100 + Math.max(0, this.levelIndex - 1) * 10,
+          healUpgradeSold: false,
           offers: makeMerchantOffers(this.nextLevelIndex, 4),
         };
       }
@@ -201,8 +203,13 @@
     }
 
     advanceAfterLevelComplete() {
+      for (const player of this.players) {
+        if (!player.alive) continue;
+        player.potions = player.maxHealsPerRun;
+      }
+
       const nextLevel = this.levelIndex + 1;
-      if (this.levelIndex % 10 === 0) {
+      if (this.levelIndex % 3 === 0) {
         this.enterCamp(nextLevel);
       } else {
         this.enterCombatLevel(nextLevel);
@@ -241,10 +248,23 @@
       const dist = Math.hypot(player.x - m.x, player.y - m.y);
       if (dist > player.radius + m.radius + 26) return false;
 
+      if (!m.healUpgradeSold && player.gold >= m.healUpgradeCost) {
+        player.gold -= m.healUpgradeCost;
+        m.healUpgradeSold = true;
+        player.maxHealsPerRun += 1;
+        player.potions = Math.min(player.maxHealsPerRun, player.potions + 1);
+        this.log = `${player.id} 购买了营地补给（-${m.healUpgradeCost}金币）：治疗上限提升到 ${player.maxHealsPerRun}`;
+        return true;
+      }
+
       const available = m.offers.filter((o) => !o.sold);
       if (available.length <= 0) {
         if (player.gold < m.restockCost) {
-          this.log = `${player.id} 商人已售罄，补货需要 ${m.restockCost} 金币`;
+          if (!m.healUpgradeSold) {
+            this.log = `${player.id} 金币不足，营地补给需要 ${m.healUpgradeCost} 金币`;
+          } else {
+            this.log = `${player.id} 商人已售罄，补货需要 ${m.restockCost} 金币`;
+          }
           return true;
         }
         player.gold -= m.restockCost;
@@ -359,7 +379,7 @@
         if (!this.currentRoom.lootDropped && !this.currentRoom.isBossRoom) {
           this.currentRoom.lootDropped = true;
           const pos = CG.MapSystem.getRandomOpenPosition(this.currentMap, 12);
-          this.loots.push(new CG.Loot(pos.x, pos.y, CG.EquipmentSystem.makeRandomItem()));
+          this.loots.push(new CG.Loot(pos.x, pos.y, CG.EquipmentSystem.makeRandomItem({ levelIndex: this.levelIndex })));
         }
 
         for (const player of this.players) {
@@ -395,17 +415,36 @@
         gainedGold += enemy.goldDrop || 0;
         gainedXp += enemy.xpDrop || 0;
         const eliteCount = Array.isArray(enemy.eliteSkills) ? enemy.eliteSkills.length : 0;
-        const dropChance = enemy.type === "boss" ? 1 : Math.min(0.45, 0.1 + eliteCount * 0.06);
-        if (Math.random() < dropChance) {
-          this.loots.push(new CG.Loot(enemy.x + randInt(-20, 21), enemy.y + randInt(-20, 21), CG.EquipmentSystem.makeRandomItem()));
-          if (enemy.type === "boss") {
-            const extra = randInt(1, 3);
-            for (let i = 0; i < extra; i += 1) {
-              this.loots.push(
-                new CG.Loot(enemy.x + randInt(-36, 37), enemy.y + randInt(-36, 37), CG.EquipmentSystem.makeRandomItem())
-              );
-            }
+        if (enemy.type === "boss") {
+          this.loots.push(
+            new CG.Loot(
+              enemy.x + randInt(-20, 21),
+              enemy.y + randInt(-20, 21),
+              CG.EquipmentSystem.makeRandomItem({ levelIndex: this.levelIndex, minRarity: "epic" })
+            )
+          );
+          const extra = randInt(1, 3);
+          for (let i = 0; i < extra; i += 1) {
+            this.loots.push(
+              new CG.Loot(
+                enemy.x + randInt(-36, 37),
+                enemy.y + randInt(-36, 37),
+                CG.EquipmentSystem.makeRandomItem({ levelIndex: this.levelIndex })
+              )
+            );
           }
+          continue;
+        }
+
+        const dropChance = Math.min(0.45, 0.1 + eliteCount * 0.06);
+        if (Math.random() < dropChance) {
+          this.loots.push(
+            new CG.Loot(
+              enemy.x + randInt(-20, 21),
+              enemy.y + randInt(-20, 21),
+              CG.EquipmentSystem.makeRandomItem({ levelIndex: this.levelIndex })
+            )
+          );
         }
       }
 

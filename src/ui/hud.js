@@ -51,7 +51,7 @@
       } else if (game.state === GAME_STATES.GAME_OVER) {
         controlHint = "挑战失败，按 Enter 返回职业选择。";
       } else if (isCamp) {
-        controlHint = "休息营地：靠近商人按 E/O 购买（自动买当前可买最便宜）；进入上方传送门前往下一关。";
+        controlHint = "休息营地（每3关）：靠近商人按 E/O 购买（优先买治疗上限+1）；进入上方传送门前往下一关。";
       }
 
       const campPanel = isCamp ? this.renderCampShop(game) : "";
@@ -64,7 +64,7 @@
         <div class="panel-inline">
           <div class="meta">${controlHint}</div>
           <div class="meta">${game.lastRewardText ? `最近掉落：${game.lastRewardText}` : ""}</div>
-          <div class="meta">常见内容已加入：等级成长、金币、治疗次数限制（每局2次）、暴击、吸血、装备品质（普通/稀有/史诗/传说）。</div>
+          <div class="meta">常见内容已加入：等级成长、金币、治疗次数上限（可在营地提升）、暴击、吸血、装备品质（普通/稀有/史诗/传说）。</div>
           <div class="meta">新系统：敌人随机精英技能组合；装备新增触发技能（命中/暴击/受击/击杀/技能触发）。</div>
           <div class="meta">Boss内容：随机外形池、近战/远程双技能树、随关卡阶段持续扩展技能。</div>
         </div>
@@ -75,6 +75,12 @@
       const merchant = game.currentRoom?.merchant;
       if (!merchant) return "";
       const offers = merchant.offers || [];
+      const healRarityColor = merchant.healUpgradeSold ? "#8c8c8c" : "#ffd37a";
+      const healTag = merchant.healUpgradeSold ? "已售出" : `${merchant.healUpgradeCost} 金币`;
+      const healCard = `<div class="bag-slot" style="border-color:${healRarityColor};opacity:${merchant.healUpgradeSold ? 0.55 : 1}">
+            <div class="bag-name" style="color:${healRarityColor}">营地补给 · 治疗上限+1</div>
+            <div class="bag-meta">每次营地限购1次 · ${healTag}</div>
+          </div>`;
       const offerHtml = offers
         .map((o, idx) => {
           const rarity = o.item?.rarity || { name: "普通", color: "#cfd8dc" };
@@ -89,8 +95,9 @@
       return `
         <section class="panel-card">
           <h4>营地商人</h4>
+          <div class="meta">营地补给已加入商品列表：治疗上限+1（每次营地仅1次）</div>
           <div class="meta">全部售罄后可花费 ${merchant.restockCost} 金币补货</div>
-          <div class="bag-grid">${offerHtml}</div>
+          <div class="bag-grid">${healCard}${offerHtml}</div>
         </section>
       `;
     }
